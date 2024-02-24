@@ -1,5 +1,5 @@
 import * as Mastodon from 'tsl-mastodon-api';
-const mastodon = new Mastodon.API({access_token: process.env.MASTODON_TOKEN, api_url: 'https://mastodon.social/api/v1/'});
+const mastodon = new Mastodon.API({access_token: `${process.env.MASTODON_TOKEN}`, api_url: 'https://mastodon.social/api/v1/'});
 
 export default async function getPostText() {
 	const limitVal = 15; // The number of posts to get from Mastodon.
@@ -127,5 +127,6 @@ export default async function getPostText() {
 	var cards = cardArr.join("@#%");
 	var urlsStringsAltsCardsArr = [urls, strings, alts, cards];
 	var urlsStringsAltsCards = urlsStringsAltsCardsArr.join("~~~");
+  console.log("urlsStringsAltsCards: " + urlsStringsAltsCards);
 	return urlsStringsAltsCards; // Return this singular concatenated string. 
 }
