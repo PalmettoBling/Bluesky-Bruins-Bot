@@ -127,6 +127,5 @@ export default async function getPostText() {
 	var cards = cardArr.join("@#%");
 	var urlsStringsAltsCardsArr = [urls, strings, alts, cards];
 	var urlsStringsAltsCards = urlsStringsAltsCardsArr.join("~~~");
-  console.log("urlsStringsAltsCards: " + urlsStringsAltsCards);
 	return urlsStringsAltsCards; // Return this singular concatenated string. 
 }

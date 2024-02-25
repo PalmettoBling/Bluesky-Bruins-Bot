@@ -78,29 +78,20 @@ export default class Bot
           Omit<AppBskyFeedPost.Record, "createdAt">)
   ) 
   {
-    var img; // Create a variable to contain the image data for this post. This will be defined as a dictionary later.
-    var urls = url.split("!^&"); // Parse the string of concatenated urls into an array of individual urls.
-    var alts = alt.split("!^&"); // Parse the string of concatenated alt text values into an array of individual alt text values.
-    var cards = card.split("!^&"); // Parse the string of concatenated link card links into an array of individual link card links.
-    var cardEmbed; // Create a variable to store the link card embed object.
+    var img;
+    var urls = url.split("!^&");
+    var alts = alt.split("!^&");
+    var cards = card.split("!^&");
+    var cardEmbed;
 
-    console.log("card: "); // Keeping these here for now for debug purposes.
-    console.log(card);
-    console.log("cards[0]: ");
-    console.log(cards[0]);
-
-    if (card != "None" && urls[0] == "None") // Check if there is a link card, and there's not at least one url. This might be implemented incorrectly.
+    if (card != "None" && urls[0] == "None")
     {
-      var cardBuffer; 
-      if (cards[3] != "None")
-      {
-        var cardResponse = await axios.get(cards[3], { responseType: 'arraybuffer'});
-        cardBuffer = Buffer.from(cardResponse.data, "utf-8");
-      }
-        if ((cardBuffer != undefined && cardBuffer.length > 1000000) || cards[3] == "None")
+      var cardResponse = await axios.get(cards[3], { responseType: 'arraybuffer'});
+      var cardBuffer = Buffer.from(cardResponse.data, "utf-8");
+        if (cardBuffer.length > 1000000)
         {
-          console.log("file too big or no image supplied");
-          var cardResponse = await axios.get("https://assets.nhle.com/logos/nhl/svg/BOS_dark.svg", { responseType: 'arraybuffer'}); 
+          console.log("file too big");
+          cardResponse = await axios.get("https://www.wnct.com/wp-content/uploads/sites/99/2022/12/Hurricanes-Stadium-Series-Logo.png", { responseType: 'arraybuffer'}); 
           cardBuffer = Buffer.from(cardResponse.data, "utf-8");
         }
         const cardUpload = await this.#agent.uploadBlob(cardBuffer, {encoding: "image/png"});
@@ -112,7 +103,6 @@ export default class Bot
     {
       if (urls[i] != "None")
       {
-        console.log("urls["+ i + "] != None");
         var response = await axios.get(urls[i], { responseType: 'arraybuffer'});
         var buffer = Buffer.from(response.data, "utf-8");
         if (buffer.length <= 1000000)
@@ -141,11 +131,12 @@ export default class Bot
             }
           }
         }
+       // console.log(img);
       }
     }
 
     var postNum = 20; // Specify the number of recent posts to compare from the logged in user's feed.
-    var bskyFeedAwait = await this.#agent.getAuthorFeed({actor: "bostonbruins.bsky.social", limit: postNum,}); // Get a defined number + 2 of most recent posts from the logged in user's feed.
+    var bskyFeedAwait = await this.#agent.getAuthorFeed({actor: "notcanes.bsky.social", limit: postNum,}); // Get a defined number + 2 of most recent posts from the logged in user's feed.
     var bskyFeed = bskyFeedAwait["data"]["feed"]; // Filter down the await values so we are only looking at the feeds.
     var bskyFeed0 = bskyFeed[0]; // Select post 0, the most recent post made by this user.
     var bskyPost0 = bskyFeed0["post"]; // Filter down the values of the post so we can look at the params.
@@ -205,6 +196,8 @@ export default class Bot
             reply: {root: rootId, parent: parentId,}, // Specify the reply details. Make the root the values from our public root variables, make the parent the ID values collected from this function (the ones from the most recent post)
             embed: cardEmbed,
           }; 
+          console.log("record with card");
+          console.log(record);
         }
         else
         {
@@ -220,6 +213,7 @@ export default class Bot
       {
         if (urls[0] != "None")
         {
+          console.log("there is a url.");
           record = 
           {
             text: richText.text, // Specify the text of our post as the text in the RichText obj (should be our plaintext string)
@@ -229,15 +223,19 @@ export default class Bot
         }
         else if (card != "None")
         {
+          console.log("there is a card.");
           record = 
           {
             text: richText.text, // Specify the text of our post as the text in the RichText obj (should be our plaintext string)
             facets: richText.facets, // Specify the facets of our post to be the facets of the RichText.
             embed: cardEmbed,
           };
+          console.log("record with card");
+          console.log(record);
         }
         else
         {
+          console.log("no url or card");
           record = 
           {
             text: richText.text, // Specify the text of our post as the text in the RichText obj (should be our plaintext string)
@@ -245,7 +243,6 @@ export default class Bot
           }; 
         }
       }
-      console.log(record);
       return this.#agent.post(record); // Post the record we have specified using the Bluesky agent, return the output from doing this.
     }
     else // If we are trying to post text not in the format of a string. Shouldn't happen in this unmodified codebase, I don't think
@@ -289,7 +286,7 @@ export default class Bot
       {
         if (mastodonArr[i].length <= 300) // Simple case, where a post is 300 characters or less, within the length bounds of a Bluesky post.
         {
-          await bot.post(false, mastUrlArr[i], mastAltArr[i], mastCardArr[i], mastodonArr[i]); // Run bot.post on this text value, posting to Bluesky if the text is new. Post this as a root value. // Run bot.post on this text value, posting to Bluesky if the text is new. Post this as a root value.
+          await bot.post(false, mastUrlArr[i], mastAltArr[i], mastCardArr[i], mastodonArr[i]); // Run bot.post on this text value, posting to Bluesky if the text is new. Post this as a root value.
         }
         else // Complicated case where a post is longer than 300 characters, longer than a valid Bluesky post. 
         {
@@ -315,18 +312,13 @@ export default class Bot
           }
           chunkStr = chunkArr.join(" "); // Turn the last chunk into a string by delimiting the words with spaces.
           threadArr.push(chunkStr); // Add the last chunk string to the thread array.
-          console.log("threadArr:");
-          console.log(threadArr);
           var isReply = false; // Create a boolean value to determine if we want to post a root post or a reply. Start with a root post. 
           for (var j = 0; j < threadArr.length; j++) // Iterate over all of the chunk strings contained in the thread array.
           {
-            console.log("posting " + j + ": " + threadArr[j]);
             await bot.post(isReply, mastUrlArr[i], mastAltArr[i], mastCardArr[i], threadArr[j] + " [" + (j+1) + "/" + threadArr.length + "]"); // Post string j in the thread array. Use the boolean variable to determine whether this is a root post or a reply, add a post counter on the end to make the thread easier to read. 
-            console.log("posted! ");
             if (isReply == false) // If this post was posted as a root, meaning that this is the first iteration:
             {
               isReply = true; // Set the boolean value to post as replies for the remaining iterations.
-              console.log(mastUrlArr[i]);
               mastUrlArr[i] = "None!^&None!^&None!^&None";
               mastAltArr[i] = "None!^&None!^&None!^&None";
             }
