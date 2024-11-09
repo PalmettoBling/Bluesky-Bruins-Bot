@@ -15,5 +15,4 @@ export const bskyAccount: AtpAgentLoginOpts = {
   password: parsed.BSKY_PASSWORD,
 };
 
-
 export const bskyService = parsed.BSKY_SERVICE;
