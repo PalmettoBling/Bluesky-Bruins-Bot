@@ -9,6 +9,8 @@ const { BskyAgent, RichText } = atproto;
 import { promises as fs } from "fs";
 import axios from "axios";
 
+//don't need some imports, refactor for gifs?
+
 type BotOptions = 
 {
   service: string | URL;
