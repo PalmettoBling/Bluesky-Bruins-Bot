@@ -100,7 +100,7 @@ export default class Bot
         if ((cardBuffer != undefined && cardBuffer.length > 1000000) || cards[3] == "None")
         {
           console.log("file too big or no image supplied");
-          var cardResponse = await axios.get("https://www.sportsnet.ca/wp-content/uploads/2020/03/1704050871_6140634293001_6140631802001-vs.jpg", { responseType: 'arraybuffer'}); 
+          var cardResponse = await axios.get("https://assets.nhle.com/logos/nhl/svg/BOS_dark.svg", { responseType: 'arraybuffer'}); 
           cardBuffer = Buffer.from(cardResponse.data, "utf-8");
         }
         const cardUpload = await this.#agent.uploadBlob(cardBuffer, {encoding: "image/png"});
@@ -145,7 +145,7 @@ export default class Bot
     }
 
     var postNum = 20; // Specify the number of recent posts to compare from the logged in user's feed.
-    var bskyFeedAwait = await this.#agent.getAuthorFeed({actor: "notfriedgehnic.bsky.social", limit: postNum,}); // Get a defined number + 2 of most recent posts from the logged in user's feed.
+    var bskyFeedAwait = await this.#agent.getAuthorFeed({actor: "bostonbruins.bsky.social", limit: postNum,}); // Get a defined number + 2 of most recent posts from the logged in user's feed.
     var bskyFeed = bskyFeedAwait["data"]["feed"]; // Filter down the await values so we are only looking at the feeds.
     var bskyFeed0 = bskyFeed[0]; // Select post 0, the most recent post made by this user.
     var bskyPost0 = bskyFeed0["post"]; // Filter down the values of the post so we can look at the params.
