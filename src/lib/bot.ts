@@ -80,21 +80,38 @@ export default class Bot
           Omit<AppBskyFeedPost.Record, "createdAt">)
   ) 
   {
-    var img; // Create a variable to contain the image data for this post. This will be defined as a dictionary later.
-    var urls = url.split("!^&"); // Parse the string of concatenated urls into an array of individual urls.
-    var alts = alt.split("!^&"); // Parse the string of concatenated alt text values into an array of individual alt text values.
-    var cards = card.split("!^&"); // Parse the string of concatenated link card links into an array of individual link card links.
-    var cardEmbed; // Create a variable to store the link card embed object.
+    var img;
+    var urls = url.split("!^&");
+    var alts = alt.split("!^&");
+    var cards = card.split("!^&");
+    var cardEmbed;
 
-    console.log("card: "); // Keeping these here for now for debug purposes.
-    console.log(card);
-    console.log("cards[0]: ");
-    console.log(cards[0]);
+    const { data: serviceAuth } = await this.userAgent.com.atproto.server.getServiceAuth({aud: 'did:web:video.bsky.app', lxm: 'app.bsky.video.getUploadLimits', exp: Date.now() / 1000 + 60 * 30,},);
+    const token = serviceAuth.token;
+    const limitsUrl = 'https://video.bsky.app/xrpc/app.bsky.video.getUploadLimits'; 
+    const limitsResponse = await axios.get(limitsUrl, {headers: {'Authorization': `Bearer ${token}`}});
+    const limits = limitsResponse.data;
 
-    if (card != "None" && urls[0] == "None") // Check if there is a link card, and there's not at least one url. This might be implemented incorrectly.
+    if (urls[0].slice(-3) == "mp4" && parseFloat(alts[0].split("@#*")[2]) < 180 && limits.canUpload == true)
     {
-      var cardBuffer; 
-      if (cards[3] != "None")
+      await this.postVideo(false, urls[0], alts[0], text);
+      return 37;
+    }
+    else
+    {
+      if (urls[0].slice(-3) == "mp4")
+      {
+        urls[0] = alts[0].split("@#*")[3];
+        if (limits.canUpload == false)
+        {
+          alts[0] = "The bot has posted its maximum number of videos for the day. This is the thumbnail of the video instead.";
+        }
+        else
+        {
+          alts[0] = "The video is too long to be posted on Bluesky. This is the thumbnail of the video instead.";
+        }
+      }
+      if (card != "None" && urls[0] == "None")
       {
         var cardResponse = await axios.get(cards[3], { responseType: 'arraybuffer'});
         cardBuffer = Buffer.from(cardResponse.data, "utf-8");
@@ -285,57 +302,65 @@ export default class Bot
     var mastAltArr = urlsStringsAltsCardsArr[2].split("@#%");
     var mastCardArr = urlsStringsAltsCardsArr[3].split("@#%");
 
-    if (!dryRun) // Make sure that we don't wanna run the bot without posting. Tbh, I think I might have broken this feature through my changes to the source code. May need to reimplement dry run as a working option when I generalize the code for other purposes.
-    { 
-      for (let i = mastodonArr.length - 1; i >= 0; i--) // Iterate over the recent Mastodon posts in reverse sequential order. -1 may not be necessary, do some more testing.
-      {
-        if (mastodonArr[i].length <= 300) // Simple case, where a post is 300 characters or less, within the length bounds of a Bluesky post.
+      if (!dryRun) // Make sure that we don't wanna run the bot without posting. Tbh, I think I might have broken this feature through my changes to the source code. May need to reimplement dry run as a working option when I generalize the code for other purposes.
+      { 
+        var postCount = 0; // Variable to keep track of how many successful posts occurred.
+        for (let i = mastodonArr.length - 1; i >= 0; i--) // Iterate over the recent Mastodon posts in reverse sequential order. -1 may not be necessary, do some more testing.
         {
-          await bot.post(false, mastUrlArr[i], mastAltArr[i], mastCardArr[i], mastodonArr[i]); // Run bot.post on this text value, posting to Bluesky if the text is new. Post this as a root value. // Run bot.post on this text value, posting to Bluesky if the text is new. Post this as a root value.
+          if (mastodonArr[i].length <= 300) // Simple case, where a post is 300 characters or less, within the length bounds of a Bluesky post.
+          {
+            var postVal = await bot.post(false, mastUrlArr[i], mastAltArr[i], mastCardArr[i], mastodonArr[i]); // Run bot.post on this text value, posting to Bluesky if the text is new. Post this as a root value. // Run bot.post on this text value, posting to Bluesky if the text is new. Post this as a root value.
+            if (Number(postVal) != 37)
+            {
+              postCount++;
+            }
+          }
+          else // Complicated case where a post is longer than 300 characters, longer than a valid Bluesky post. 
+          {
+            var wordArr = mastodonArr[i].split(" "); // Turn the string into an array of words parsed by spaces.
+            var chunkLen = 0; // Initialize the length of a chunk to 0.
+            var chunkArr = []; // Initialize the array storing the words contained in the chunk to be empty.
+            var threadArr = []; // Initialize the array storing the chunk strings to be empty.
+            var chunkStr = ""; // Initialize the chunk string to be empty.
+            while (wordArr.length != 0) // Loop while there are still words in the array to chunk.
+            {
+              if(chunkLen + wordArr[0].length <= 294) // If adding the next word in the array to the chunk will not cause it to surpass the max length:
+              {
+                chunkLen += wordArr[0].length + 1; // Increase the chunk length by the length of the word being added.  
+                chunkArr.push(wordArr.shift()); // Add the new word to the end of the chunk array, while also removing it from the front of the word array.
+              }
+              else  // If the max length is surpassed by adding the next word to the chunk:
+              {
+                chunkStr = chunkArr.join(" "); // Turn the chunk into a string by delimiting the words with spaces. 
+                chunkArr = []; // Empty the chunk array.
+                chunkLen = 0; // Reset the chunk length to 0.
+                threadArr.push(chunkStr); // Add the chunk string to the thread array. 
+              }
+            }
+            chunkStr = chunkArr.join(" "); // Turn the last chunk into a string by delimiting the words with spaces.
+            threadArr.push(chunkStr); // Add the last chunk string to the thread array.
+            var isReply = false; // Create a boolean value to determine if we want to post a root post or a reply. Start with a root post. 
+            for (var j = 0; j < threadArr.length; j++) // Iterate over all of the chunk strings contained in the thread array.
+            {
+              var postVal = await bot.post(isReply, mastUrlArr[i], mastAltArr[i], mastCardArr[i], threadArr[j] + " [" + (j+1) + "/" + threadArr.length + "]"); // Post string j in the thread array. Use the boolean variable to determine whether this is a root post or a reply, add a post counter on the end to make the thread easier to read. 
+              if (Number(postVal) != 37)
+              {
+                postCount++;
+              }
+              if (isReply == false) // If this post was posted as a root, meaning that this is the first iteration:
+              {
+                isReply = true; // Set the boolean value to post as replies for the remaining iterations.
+                mastUrlArr[i] = "None!^&None!^&None!^&None";
+                mastAltArr[i] = "None!^&None!^&None!^&None";
+              }
+            }
+          }
         }
-        else // Complicated case where a post is longer than 300 characters, longer than a valid Bluesky post. 
+        if (postCount == mastodonArr.length)
         {
-          var wordArr = mastodonArr[i].split(" "); // Turn the string into an array of words parsed by spaces.
-          var chunkLen = 0; // Initialize the length of a chunk to 0.
-          var chunkArr = []; // Initialize the array storing the words contained in the chunk to be empty.
-          var threadArr = []; // Initialize the array storing the chunk strings to be empty.
-          var chunkStr = ""; // Initialize the chunk string to be empty.
-          while (wordArr.length != 0) // Loop while there are still words in the array to chunk.
-          {
-            if(chunkLen + wordArr[0].length <= 294) // If adding the next word in the array to the chunk will not cause it to surpass the max length:
-            {
-              chunkLen += wordArr[0].length + 1; // Increase the chunk length by the length of the word being added.  
-              chunkArr.push(wordArr.shift()); // Add the new word to the end of the chunk array, while also removing it from the front of the word array.
-            }
-            else  // If the max length is surpassed by adding the next word to the chunk:
-            {
-              chunkStr = chunkArr.join(" "); // Turn the chunk into a string by delimiting the words with spaces. 
-              chunkArr = []; // Empty the chunk array.
-              chunkLen = 0; // Reset the chunk length to 0.
-              threadArr.push(chunkStr); // Add the chunk string to the thread array. 
-            }
-          }
-          chunkStr = chunkArr.join(" "); // Turn the last chunk into a string by delimiting the words with spaces.
-          threadArr.push(chunkStr); // Add the last chunk string to the thread array.
-          console.log("threadArr:");
-          console.log(threadArr);
-          var isReply = false; // Create a boolean value to determine if we want to post a root post or a reply. Start with a root post. 
-          for (var j = 0; j < threadArr.length; j++) // Iterate over all of the chunk strings contained in the thread array.
-          {
-            console.log("posting " + j + ": " + threadArr[j]);
-            await bot.post(isReply, mastUrlArr[i], mastAltArr[i], mastCardArr[i], threadArr[j] + " [" + (j+1) + "/" + threadArr.length + "]"); // Post string j in the thread array. Use the boolean variable to determine whether this is a root post or a reply, add a post counter on the end to make the thread easier to read. 
-            console.log("posted! ");
-            if (isReply == false) // If this post was posted as a root, meaning that this is the first iteration:
-            {
-              isReply = true; // Set the boolean value to post as replies for the remaining iterations.
-              console.log(mastUrlArr[i]);
-              mastUrlArr[i] = "None!^&None!^&None!^&None";
-              mastAltArr[i] = "None!^&None!^&None!^&None";
-            }
-          }
+          await bot.post(false, "None!^&None!^&None!^&None", "None!^&None!^&None!^&None", "None", "ERROR: Repost Detection Glitch.");
         }
       }
+      return; // Return void, we're done. 
     }
-    return; // Return void, we're done. 
   }
-}
