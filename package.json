@@ -34,16 +34,10 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@atproto/api": "^0.2.11",
-    "axios": "^1.6.7",
-    "tsl-mastodon-api": "^0.4.2",
-=======
     "@atproto/api": "^0.13.12",
     "axios": "^1.6.0",
     "node-html-parser": "^6.1.10",
     "tsl-mastodon-api": "^0.4.1",
->>>>>>> b485b5fcfc1c36e5f8e918b701056509001ad3f6
     "zod": "^3.21.4"
   }
 }
