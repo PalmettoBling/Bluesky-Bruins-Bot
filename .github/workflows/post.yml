@@ -1,9 +1,15 @@
 name: "Post to Bluesky"
+<<<<<<< HEAD
 
 on:
    schedule:
      - cron: "*/5 * * * *"
 
+=======
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+>>>>>>> b485b5fcfc1c36e5f8e918b701056509001ad3f6
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,5 +25,9 @@ jobs:
         run: npm start
         env:
           BSKY_HANDLE: ${{ secrets.BSKY_HANDLE }}
+<<<<<<< HEAD
           BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
           MASTODON_TOKEN: ${{ secrets.MASTODON_TOKEN }}
+=======
+          BSKY_PASSWORD: ${{ secrets.BSKY_PASSWORD }}
+>>>>>>> b485b5fcfc1c36e5f8e918b701056509001ad3f6
